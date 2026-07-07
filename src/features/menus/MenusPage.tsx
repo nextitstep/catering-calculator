@@ -4,7 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import {
   Button,
   Input,
-  Menu,
+  Menu as FluentMenu,
   MenuItem,
   MenuList,
   MenuPopover,
@@ -15,16 +15,15 @@ import {
 } from '@fluentui/react-components';
 import {
   Add24Filled,
-  ArrowDownload24Regular,
   ArrowUpload24Regular,
   MoreHorizontal24Regular,
   Search24Regular,
 } from '@fluentui/react-icons';
-import { useRecipesStore } from '@/features/recipes/RecipesContext';
-import { RecipeCard } from '@/features/recipes/components/RecipeCard';
+import { useMenusStore } from '@/features/menus/MenusContext';
+import { MenuCard } from '@/features/menus/components/MenuCard';
 import { TextPromptDialog } from '@/shared/components/TextPromptDialog';
 import { useAppToaster } from '@/shared/components/ToasterProvider';
-import type { Recipe } from '@/types';
+import type { Menu } from '@/types';
 
 const useStyles = makeStyles({
   header: {
@@ -74,46 +73,36 @@ const useStyles = makeStyles({
   },
 });
 
-export function RecipesPage() {
+export function MenusPage() {
   const styles = useStyles();
   const navigate = useNavigate();
   const { notify } = useAppToaster();
-  const {
-    recipes,
-    activeRecipeId,
-    setActiveRecipeId,
-    createRecipe,
-    renameRecipe,
-    duplicateRecipe,
-    deleteRecipe,
-    toggleFavorite,
-    importRecipe,
-  } = useRecipesStore();
+  const { menus, createMenu, renameMenu, duplicateMenu, deleteMenu, toggleFavorite, importMenu } =
+    useMenusStore();
 
   const [search, setSearch] = useState('');
-  const [renameTarget, setRenameTarget] = useState<Recipe | null>(null);
+  const [renameTarget, setRenameTarget] = useState<Menu | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return recipes;
-    return recipes.filter(
-      (r) => r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q)
+    if (!q) return menus;
+    return menus.filter(
+      (m) => m.name.toLowerCase().includes(q) || m.description.toLowerCase().includes(q)
     );
-  }, [recipes, search]);
+  }, [menus, search]);
 
-  function handleOpen(recipe: Recipe) {
-    setActiveRecipeId(recipe.id);
-    navigate('/ingredients');
+  function handleOpen(menu: Menu) {
+    navigate(`/menus/${menu.id}`);
   }
 
-  function handleExport(recipe: Recipe) {
-    const blob = new Blob([JSON.stringify(recipe, null, 2)], { type: 'application/json' });
+  function handleExport(menu: Menu) {
+    const blob = new Blob([JSON.stringify(menu, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${recipe.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`;
+    a.download = `${menu.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -122,16 +111,16 @@ export function RecipesPage() {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(String(reader.result)) as Recipe;
+        const parsed = JSON.parse(String(reader.result)) as Menu;
         if (!parsed.name || !Array.isArray(parsed.ingredients)) {
-          throw new Error('Invalid recipe file');
+          throw new Error('Invalid menu file');
         }
-        importRecipe(parsed);
+        importMenu(parsed);
         notify({ title: `Imported "${parsed.name}"`, intent: 'success' });
       } catch {
         notify({
           title: 'Import failed',
-          body: 'That file is not a valid recipe JSON.',
+          body: 'That file is not a valid menu JSON.',
           intent: 'error',
         });
       }
@@ -142,11 +131,11 @@ export function RecipesPage() {
   return (
     <div>
       <div className={styles.header}>
-        <Title2>Recipes</Title2>
+        <Title2>Menus</Title2>
         <Input
           className={styles.search}
           contentBefore={<Search24Regular />}
-          placeholder="Search recipes..."
+          placeholder="Search menus..."
           value={search}
           onChange={(_, data) => setSearch(data.value)}
         />
@@ -156,9 +145,9 @@ export function RecipesPage() {
           icon={<Add24Filled />}
           onClick={() => setCreateOpen(true)}
         >
-          New Recipe
+          New Menu
         </Button>
-        <Menu>
+        <FluentMenu>
           <MenuTrigger disableButtonEnhancement>
             <Button appearance="subtle" icon={<MoreHorizontal24Regular />} aria-label="More" />
           </MenuTrigger>
@@ -170,19 +159,9 @@ export function RecipesPage() {
               >
                 Import JSON
               </MenuItem>
-              <MenuItem
-                icon={<ArrowDownload24Regular />}
-                disabled={!activeRecipeId}
-                onClick={() => {
-                  const active = recipes.find((r) => r.id === activeRecipeId);
-                  if (active) handleExport(active);
-                }}
-              >
-                Export active recipe JSON
-              </MenuItem>
             </MenuList>
           </MenuPopover>
-        </Menu>
+        </FluentMenu>
         <input
           ref={fileInputRef}
           type="file"
@@ -197,20 +176,20 @@ export function RecipesPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className={styles.empty}>No recipes match your search.</div>
+        <div className={styles.empty}>No menus match your search.</div>
       ) : (
         <div className={styles.grid}>
           <AnimatePresence>
-            {filtered.map((recipe) => (
-              <RecipeCard
-                key={recipe.id}
-                recipe={recipe}
-                isActive={recipe.id === activeRecipeId}
-                onOpen={() => handleOpen(recipe)}
-                onToggleFavorite={() => toggleFavorite(recipe.id)}
-                onRename={() => setRenameTarget(recipe)}
-                onDuplicate={() => duplicateRecipe(recipe.id)}
-                onDelete={() => deleteRecipe(recipe.id)}
+            {filtered.map((menu) => (
+              <MenuCard
+                key={menu.id}
+                menu={menu}
+                onOpen={() => handleOpen(menu)}
+                onToggleFavorite={() => toggleFavorite(menu.id)}
+                onRename={() => setRenameTarget(menu)}
+                onDuplicate={() => duplicateMenu(menu.id)}
+                onDelete={() => deleteMenu(menu.id)}
+                onExport={() => handleExport(menu)}
               />
             ))}
           </AnimatePresence>
@@ -224,30 +203,30 @@ export function RecipesPage() {
         size="large"
         icon={<Add24Filled />}
         onClick={() => setCreateOpen(true)}
-        aria-label="New Recipe"
+        aria-label="New Menu"
       />
 
       <TextPromptDialog
         open={createOpen}
-        title="New Recipe"
-        label="Recipe name"
+        title="New Menu"
+        label="Menu name"
         confirmText="Create"
         onCancel={() => setCreateOpen(false)}
         onConfirm={(name) => {
-          createRecipe(name);
+          const id = createMenu(name);
           setCreateOpen(false);
-          navigate('/ingredients');
+          navigate(`/menus/${id}`);
         }}
       />
 
       <TextPromptDialog
         open={renameTarget !== null}
-        title="Rename Recipe"
-        label="Recipe name"
+        title="Rename Menu"
+        label="Menu name"
         initialValue={renameTarget?.name}
         onCancel={() => setRenameTarget(null)}
         onConfirm={(name) => {
-          if (renameTarget) renameRecipe(renameTarget.id, name);
+          if (renameTarget) renameMenu(renameTarget.id, name);
           setRenameTarget(null);
         }}
       />

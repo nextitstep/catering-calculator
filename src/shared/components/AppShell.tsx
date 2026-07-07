@@ -4,7 +4,7 @@ import { makeStyles, tokens } from '@fluentui/react-components';
 import { SideNav } from '@/shared/components/SideNav';
 import { BottomNav } from '@/shared/components/BottomNav';
 import { TopBar } from '@/shared/components/TopBar';
-import { useRecipesStore } from '@/features/recipes/RecipesContext';
+import { useMenusStore } from '@/features/menus/MenusContext';
 import { useAppToaster } from '@/shared/components/ToasterProvider';
 import { useTranslation } from '@/shared/i18n/useTranslation';
 
@@ -37,14 +37,14 @@ const useStyles = makeStyles({
 
 export function AppShell() {
   const styles = useStyles();
-  const { pendingDeletion, undoDelete, dismissUndo } = useRecipesStore();
+  const { pendingDeletion, undoDelete, dismissUndo } = useMenusStore();
   const { notify } = useAppToaster();
   const { t } = useTranslation();
 
   useEffect(() => {
     if (!pendingDeletion) return;
     notify({
-      title: `"${pendingDeletion.recipe.name}" deleted`,
+      title: `"${pendingDeletion.menu.name}" deleted`,
       actionText: t('action_undo'),
       onAction: () => {
         undoDelete();
@@ -57,20 +57,14 @@ export function AppShell() {
 
   return (
     <div className={styles.root}>
-      <div className="no-print" style={{ display: 'contents' }}>
-        <SideNav />
-      </div>
+      <SideNav />
       <div className={styles.main}>
-        <div className="no-print" style={{ display: 'contents' }}>
-          <TopBar />
-        </div>
+        <TopBar />
         <main className={styles.content}>
           <Outlet />
         </main>
       </div>
-      <div className="no-print" style={{ display: 'contents' }}>
-        <BottomNav />
-      </div>
+      <BottomNav />
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import { Reorder, useDragControls } from 'framer-motion';
-import { Button, Dropdown, Input, Option, makeStyles, tokens } from '@fluentui/react-components';
+import { Button, Combobox, Dropdown, Input, Option, makeStyles, tokens } from '@fluentui/react-components';
 import { Delete24Regular, ReOrderDotsVertical24Regular } from '@fluentui/react-icons';
-import type { Ingredient, Unit } from '@/types';
+import type { MenuIngredient, Unit } from '@/types';
 import { UNIT_OPTIONS } from '@/types';
+import { useIngredientCatalog } from '@/features/ingredientCatalog/IngredientCatalogContext';
 
 const useStyles = makeStyles({
   card: {
@@ -39,15 +40,17 @@ const useStyles = makeStyles({
   },
 });
 
-interface IngredientCardProps {
-  ingredient: Ingredient;
-  onChange: (partial: Partial<Ingredient>) => void;
+interface IngredientRowProps {
+  ingredient: MenuIngredient;
+  onChange: (partial: Partial<MenuIngredient>) => void;
   onDelete: () => void;
 }
 
-export function IngredientCard({ ingredient, onChange, onDelete }: IngredientCardProps) {
+export function IngredientRow({ ingredient, onChange, onDelete }: IngredientRowProps) {
   const styles = useStyles();
   const controls = useDragControls();
+  const { suggestions, remember } = useIngredientCatalog();
+  const matches = suggestions(ingredient.name);
 
   return (
     <Reorder.Item
@@ -66,11 +69,26 @@ export function IngredientCard({ ingredient, onChange, onDelete }: IngredientCar
       </div>
       <div>
         <div className={styles.fields}>
-          <Input
+          <Combobox
+            freeform
             placeholder="Ingredient name"
             value={ingredient.name}
-            onChange={(_, data) => onChange({ name: data.value })}
-          />
+            onChange={(e) => onChange({ name: e.target.value })}
+            onOptionSelect={(_, data) => {
+              if (!data.optionText) return;
+              const match = matches.find((m) => m.name === data.optionText);
+              onChange({ name: data.optionText, unit: match?.unit ?? ingredient.unit });
+            }}
+            onBlur={() => {
+              if (ingredient.name.trim()) remember(ingredient.name, ingredient.unit, ingredient.customUnit);
+            }}
+          >
+            {matches.map((s) => (
+              <Option key={s.name} text={s.name}>
+                {s.name}
+              </Option>
+            ))}
+          </Combobox>
           <Input
             type="number"
             placeholder="Qty"

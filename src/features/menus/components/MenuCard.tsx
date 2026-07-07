@@ -4,7 +4,7 @@ import {
   Button,
   Card,
   CardHeader,
-  Menu,
+  Menu as FluentMenu,
   MenuItem,
   MenuList,
   MenuPopover,
@@ -15,6 +15,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import {
+  ArrowDownload24Regular,
   Copy24Regular,
   Delete24Regular,
   Edit24Regular,
@@ -22,8 +23,7 @@ import {
   Star24Filled,
   Star24Regular,
 } from '@fluentui/react-icons';
-import type { Recipe } from '@/types';
-import { computeRecipeMetrics } from '@/features/costing/calculations';
+import type { Menu } from '@/types';
 import { formatMoney } from '@/shared/lib/currency';
 
 const useStyles = makeStyles({
@@ -62,27 +62,26 @@ const useStyles = makeStyles({
   },
 });
 
-interface RecipeCardProps {
-  recipe: Recipe;
-  isActive: boolean;
+interface MenuCardProps {
+  menu: Menu;
   onOpen: () => void;
   onToggleFavorite: () => void;
   onRename: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onExport: () => void;
 }
 
-export function RecipeCard({
-  recipe,
-  isActive,
+export function MenuCard({
+  menu,
   onOpen,
   onToggleFavorite,
   onRename,
   onDuplicate,
   onDelete,
-}: RecipeCardProps) {
+  onExport,
+}: MenuCardProps) {
   const styles = useStyles();
-  const metrics = computeRecipeMetrics(recipe);
 
   return (
     <motion.div
@@ -93,29 +92,21 @@ export function RecipeCard({
       transition={{ duration: 0.25 }}
       style={{ height: '100%' }}
     >
-      <Card
-        className={styles.card}
-        style={
-          isActive
-            ? { borderColor: tokens.colorBrandStroke1, borderWidth: '2px' }
-            : undefined
-        }
-        onClick={onOpen}
-      >
+      <Card className={styles.card} onClick={onOpen}>
         <CardHeader
           header={
             <div className={styles.headerRow}>
-              <Title3>{recipe.name}</Title3>
+              <Title3>{menu.name}</Title3>
               <div className={styles.actions} onClick={(e) => e.stopPropagation()}>
                 <Button
                   appearance="subtle"
                   size="small"
                   shape="circular"
-                  icon={recipe.favorite ? <Star24Filled /> : <Star24Regular />}
+                  icon={menu.favorite ? <Star24Filled /> : <Star24Regular />}
                   onClick={onToggleFavorite}
                   aria-label="Toggle favorite"
                 />
-                <Menu>
+                <FluentMenu>
                   <MenuTrigger disableButtonEnhancement>
                     <Button
                       appearance="subtle"
@@ -133,27 +124,28 @@ export function RecipeCard({
                       <MenuItem icon={<Copy24Regular />} onClick={onDuplicate}>
                         Duplicate
                       </MenuItem>
+                      <MenuItem icon={<ArrowDownload24Regular />} onClick={onExport}>
+                        Export JSON
+                      </MenuItem>
                       <MenuItem icon={<Delete24Regular />} onClick={onDelete}>
                         Delete
                       </MenuItem>
                     </MenuList>
                   </MenuPopover>
-                </Menu>
+                </FluentMenu>
               </div>
             </div>
           }
         />
-        {recipe.description ? (
-          <Text className={styles.description}>{recipe.description}</Text>
-        ) : null}
+        {menu.description ? <Text className={styles.description}>{menu.description}</Text> : null}
         <div className={styles.meta}>
           <Badge appearance="outline" color="informative">
-            {recipe.portions} portions
+            {menu.portions} portions
           </Badge>
-          <Badge appearance="outline" color={metrics.margin >= 0 ? 'success' : 'danger'}>
-            {metrics.margin.toFixed(1)}% margin
+          <Badge appearance="outline">{menu.ingredients.length} ingredients</Badge>
+          <Badge appearance="outline" color="brand">
+            {formatMoney(menu.preferredSellPrice)}
           </Badge>
-          <Badge appearance="outline">{formatMoney(metrics.costPerPortion)} / portion</Badge>
         </div>
       </Card>
     </motion.div>

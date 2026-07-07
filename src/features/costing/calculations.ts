@@ -1,17 +1,7 @@
-import type { CostItem, Ingredient, Recipe } from '@/types';
+import type { CostItem, Menu, Unit } from '@/types';
 
-/** Ratio between the scenario portions being costed and the recipe's reference portions. */
-export function scaleFactor(recipe: Recipe): number {
-  if (!recipe.portions) return 1;
-  return recipe.simulationPortions / recipe.portions;
-}
-
-export function ingredientTotal(ingredient: Ingredient, scale = 1): number {
-  return round2(ingredient.quantity * scale * ingredient.unitPrice);
-}
-
-export function ingredientsTotal(ingredients: Ingredient[], scale = 1): number {
-  return round2(ingredients.reduce((sum, i) => sum + ingredientTotal(i, scale), 0));
+export function round2(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 export function costItemTotal(item: CostItem, portions: number): number {
@@ -19,52 +9,6 @@ export function costItemTotal(item: CostItem, portions: number): number {
     return round2(item.value * Math.max(portions, 0));
   }
   return round2(item.value);
-}
-
-export interface CostBreakdown {
-  ingredients: number;
-  packaging: number;
-  transport: number;
-  labor: number;
-  utilities: number;
-  miscellaneous: number;
-}
-
-export function costBreakdown(recipe: Recipe): CostBreakdown {
-  const scale = scaleFactor(recipe);
-  const portions = recipe.simulationPortions;
-  return {
-    ingredients: ingredientsTotal(recipe.ingredients, scale),
-    packaging: costItemTotal(recipe.packaging, portions),
-    transport: costItemTotal(recipe.transport, portions),
-    labor: costItemTotal(recipe.labor, portions),
-    utilities: costItemTotal(recipe.utilities, portions),
-    miscellaneous: costItemTotal(recipe.miscellaneous, portions),
-  };
-}
-
-export function grandTotal(recipe: Recipe): number {
-  const b = costBreakdown(recipe);
-  return round2(
-    b.ingredients + b.packaging + b.transport + b.labor + b.utilities + b.miscellaneous
-  );
-}
-
-export function costPerPortion(recipe: Recipe): number {
-  const portions = recipe.simulationPortions || 1;
-  return round2(grandTotal(recipe) / portions);
-}
-
-export function revenue(sellingPrice: number, portions: number): number {
-  return round2(sellingPrice * portions);
-}
-
-export function profit(rev: number, totalCost: number): number {
-  return round2(rev - totalCost);
-}
-
-export function profitPerPortion(sellingPrice: number, perPortionCost: number): number {
-  return round2(sellingPrice - perPortionCost);
 }
 
 export function marginPercent(profitValue: number, rev: number): number {
@@ -77,114 +21,110 @@ export function markupPercent(profitValue: number, totalCost: number): number {
   return round2((profitValue / totalCost) * 100);
 }
 
-export interface RecipeMetrics {
-  breakdown: CostBreakdown;
-  grandTotal: number;
-  costPerPortion: number;
-  revenue: number;
-  profit: number;
-  profitPerPortion: number;
-  margin: number;
-  markup: number;
+export const TARGET_MULTIPLIER = 3;
+
+/** How a menu's ingredient quantities scale when producing `quantity` portions instead of its reference batch size. */
+export function scaleFactorFor(menu: Menu, quantity: number): number {
+  if (!menu.portions) return 1;
+  return quantity / menu.portions;
 }
 
-export function computeRecipeMetrics(recipe: Recipe): RecipeMetrics {
-  const breakdown = costBreakdown(recipe);
-  const total = grandTotal(recipe);
-  const perPortion = costPerPortion(recipe);
-  const rev = revenue(recipe.sellingPrice, recipe.simulationPortions);
-  const prof = profit(rev, total);
-  const profPerPortion = profitPerPortion(recipe.sellingPrice, perPortion);
-  return {
-    breakdown,
-    grandTotal: total,
-    costPerPortion: perPortion,
-    revenue: rev,
-    profit: prof,
-    profitPerPortion: profPerPortion,
-    margin: marginPercent(prof, rev),
-    markup: markupPercent(prof, total),
-  };
+export type PriceLookup = (ingredientName: string, unit: Unit) => number;
+
+/** Cost of a single menu's ingredients when producing `quantity` portions, using prices from the simulator's price sheet. */
+export function menuIngredientsCost(menu: Menu, quantity: number, priceLookup: PriceLookup): number {
+  const scale = scaleFactorFor(menu, quantity);
+  return round2(
+    menu.ingredients.reduce((sum, ing) => sum + ing.quantity * scale * priceLookup(ing.name, ing.unit), 0)
+  );
+}
+
+export interface OtherCosts {
+  packaging: CostItem;
+  transport: CostItem;
+  labor: CostItem;
+  utilities: CostItem;
+  miscellaneous: CostItem;
+}
+
+export const DEFAULT_OTHER_COSTS: OtherCosts = {
+  packaging: { mode: 'fixed', value: 0 },
+  transport: { mode: 'fixed', value: 1500 },
+  labor: { mode: 'fixed', value: 2000 },
+  utilities: { mode: 'fixed', value: 0 },
+  miscellaneous: { mode: 'fixed', value: 0 },
+};
+
+export interface MenuSelection {
+  menu: Menu;
+  quantity: number;
+  sellPrice: number;
+}
+
+export interface CostBreakdown {
+  ingredients: number;
+  packaging: number;
+  transport: number;
+  labor: number;
+  utilities: number;
+  miscellaneous: number;
+}
+
+export interface EventTotals {
+  totalPortions: number;
+  breakdown: CostBreakdown;
+  totalCost: number;
+  costPerPortion: number;
+  totalRevenue: number;
+  totalProfit: number;
+  margin: number;
+  markup: number;
 }
 
 /**
- * Computes metrics for a recipe as if it were being produced at `eventPortions` instead of its
- * own stored scenario portions - used by the multi-recipe Event simulator so each recipe's
- * quantities/costs scale to the portions needed for that specific event without mutating it.
+ * Combines one or more menu selections (each with its own quantity and estimated sell price) plus
+ * a single shared set of overhead costs into one simulated total - this is the only place cost
+ * numbers exist; menus themselves carry no pricing data.
  */
-export function computeRecipeMetricsForPortions(
-  recipe: Recipe,
-  eventPortions: number
-): RecipeMetrics {
-  return computeRecipeMetrics({ ...recipe, simulationPortions: eventPortions });
-}
+export function computeEventTotals(
+  selections: MenuSelection[],
+  otherCosts: OtherCosts,
+  priceLookup: PriceLookup
+): EventTotals {
+  const totalPortions = selections.reduce((sum, s) => sum + Math.max(s.quantity, 0), 0);
+  const ingredientsCost = round2(
+    selections.reduce((sum, s) => sum + menuIngredientsCost(s.menu, s.quantity, priceLookup), 0)
+  );
+  const breakdown: CostBreakdown = {
+    ingredients: ingredientsCost,
+    packaging: costItemTotal(otherCosts.packaging, totalPortions),
+    transport: costItemTotal(otherCosts.transport, totalPortions),
+    labor: costItemTotal(otherCosts.labor, totalPortions),
+    utilities: costItemTotal(otherCosts.utilities, totalPortions),
+    miscellaneous: costItemTotal(otherCosts.miscellaneous, totalPortions),
+  };
+  const totalCost = round2(
+    breakdown.ingredients +
+      breakdown.packaging +
+      breakdown.transport +
+      breakdown.labor +
+      breakdown.utilities +
+      breakdown.miscellaneous
+  );
+  const totalRevenue = round2(
+    selections.reduce((sum, s) => sum + Math.max(s.quantity, 0) * s.sellPrice, 0)
+  );
+  const totalProfit = round2(totalRevenue - totalCost);
+  const costPerPortion = totalPortions > 0 ? round2(totalCost / totalPortions) : 0;
 
-export interface PricingSuggestion {
-  label: string;
-  multiplier: number;
-  sellingPrice: number;
-  profitPerPortion: number;
-  margin: number;
-  markup: number;
-}
-
-const SUGGESTION_MULTIPLIERS: { label: string; multiplier: number }[] = [
-  { label: 'Break Even', multiplier: 1 },
-  { label: '1.10x Cost', multiplier: 1.1 },
-  { label: '1.25x Cost', multiplier: 1.25 },
-  { label: '1.5x Cost', multiplier: 1.5 },
-  { label: '2x Cost', multiplier: 2 },
-  { label: '2.5x Cost', multiplier: 2.5 },
-  { label: '3x Cost', multiplier: 3 },
-];
-
-export const TARGET_MULTIPLIER = 3;
-
-export function pricingSuggestions(recipe: Recipe): PricingSuggestion[] {
-  const perPortion = costPerPortion(recipe);
-  return SUGGESTION_MULTIPLIERS.map(({ label, multiplier }) => {
-    const sellingPrice = round2(perPortion * multiplier);
-    const rev = revenue(sellingPrice, recipe.simulationPortions);
-    const total = grandTotal(recipe);
-    const prof = profit(rev, total);
-    return {
-      label,
-      multiplier,
-      sellingPrice,
-      profitPerPortion: profitPerPortion(sellingPrice, perPortion),
-      margin: marginPercent(prof, rev),
-      markup: markupPercent(prof, total),
-    };
-  });
-}
-
-export interface ProfitSimPoint {
-  sellingPrice: number;
-  profit: number;
-  revenue: number;
-}
-
-export function profitSimulationSeries(
-  recipe: Recipe,
-  steps = 20,
-  maxMultiplier = 3
-): ProfitSimPoint[] {
-  const perPortion = costPerPortion(recipe) || 1;
-  const total = grandTotal(recipe);
-  const maxPrice = perPortion * maxMultiplier;
-  const points: ProfitSimPoint[] = [];
-  for (let i = 0; i <= steps; i++) {
-    const price = round2((maxPrice / steps) * i);
-    const rev = revenue(price, recipe.simulationPortions);
-    points.push({
-      sellingPrice: price,
-      profit: profit(rev, total),
-      revenue: rev,
-    });
-  }
-  return points;
-}
-
-export function round2(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+  return {
+    totalPortions,
+    breakdown,
+    totalCost,
+    costPerPortion,
+    totalRevenue,
+    totalProfit,
+    margin: marginPercent(totalProfit, totalRevenue),
+    markup: markupPercent(totalProfit, totalCost),
+  };
 }

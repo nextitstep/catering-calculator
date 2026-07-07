@@ -14,7 +14,7 @@ import {
 } from '@fluentui/react-components';
 import { CloudSync24Regular } from '@fluentui/react-icons';
 import { useSettings } from '@/features/settings/SettingsContext';
-import { useRecipesStore } from '@/features/recipes/RecipesContext';
+import { useMenusStore } from '@/features/menus/MenusContext';
 import type { Language, ThemeMode } from '@/types';
 
 const useStyles = makeStyles({
@@ -59,7 +59,7 @@ const THEME_LABELS: Record<ThemeMode, string> = {
 export function SettingsPage() {
   const styles = useStyles();
   const { language, theme, setLanguage, setTheme } = useSettings();
-  const { cloudSync } = useRecipesStore();
+  const { cloudSync } = useMenusStore();
 
   return (
     <div>
@@ -83,7 +83,7 @@ export function SettingsPage() {
                     {cloudSync.user.displayName ?? cloudSync.user.email}
                   </Text>
                   <Text size={200} className={styles.caption}>
-                    Recipes sync automatically across your devices
+                    Menus sync automatically across your devices
                   </Text>
                 </div>
               </div>
@@ -92,7 +92,7 @@ export function SettingsPage() {
           ) : (
             <>
               <Text className={styles.caption}>
-                Sign in to sync your recipes across devices. The app keeps working offline either
+                Sign in to sync your menus across devices. The app keeps working offline either
                 way.
               </Text>
               <Button

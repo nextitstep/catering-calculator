@@ -1,15 +1,16 @@
 import { useEffect } from 'react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { FluentProvider } from '@fluentui/react-components';
-import { RecipesProvider } from '@/features/recipes/RecipesContext';
+import { MenusProvider } from '@/features/menus/MenusContext';
+import { IngredientCatalogProvider } from '@/features/ingredientCatalog/IngredientCatalogContext';
 import { SettingsProvider, useSettings } from '@/features/settings/SettingsContext';
 import { AppToasterProvider } from '@/shared/components/ToasterProvider';
 import { AppShell } from '@/shared/components/AppShell';
 import { useResolvedTheme } from '@/shared/hooks/useResolvedTheme';
 import { lightTheme, darkTheme } from '@/app/theme';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
-import { RecipesPage } from '@/features/recipes/RecipesPage';
-import { IngredientsPage } from '@/features/ingredients/IngredientsPage';
+import { MenusPage } from '@/features/menus/MenusPage';
+import { MenuDetailPage } from '@/features/menus/MenuDetailPage';
 import { SimulatorPage } from '@/features/simulator/SimulatorPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { AnalyticsPageTracker } from '@/shared/components/AnalyticsPageTracker';
@@ -34,8 +35,8 @@ function ThemedShell() {
           <Routes>
             <Route element={<AppShell />}>
               <Route path="/" element={<DashboardPage />} />
-              <Route path="/recipes" element={<RecipesPage />} />
-              <Route path="/ingredients" element={<IngredientsPage />} />
+              <Route path="/menus" element={<MenusPage />} />
+              <Route path="/menus/:menuId" element={<MenuDetailPage />} />
               <Route path="/simulator" element={<SimulatorPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
@@ -49,9 +50,11 @@ function ThemedShell() {
 export default function App() {
   return (
     <SettingsProvider>
-      <RecipesProvider>
-        <ThemedShell />
-      </RecipesProvider>
+      <IngredientCatalogProvider>
+        <MenusProvider>
+          <ThemedShell />
+        </MenusProvider>
+      </IngredientCatalogProvider>
     </SettingsProvider>
   );
 }

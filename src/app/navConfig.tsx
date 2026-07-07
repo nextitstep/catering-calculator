@@ -1,8 +1,6 @@
 import {
   Calculator24Filled,
   Calculator24Regular,
-  Food24Filled,
-  Food24Regular,
   Home24Filled,
   Home24Regular,
   Notebook24Filled,
@@ -31,9 +29,9 @@ export const navItems: NavItem[] = [
     activeIcon: <Home24Filled />,
   },
   {
-    key: 'recipes',
-    path: '/recipes',
-    labelKey: 'nav_recipes',
+    key: 'menus',
+    path: '/menus',
+    labelKey: 'nav_menus',
     icon: <Notebook24Regular />,
     activeIcon: <Notebook24Filled />,
   },
@@ -44,13 +42,6 @@ export const navItems: NavItem[] = [
     icon: <Calculator24Regular />,
     activeIcon: <Calculator24Filled />,
     central: true,
-  },
-  {
-    key: 'ingredients',
-    path: '/ingredients',
-    labelKey: 'nav_ingredients',
-    icon: <Food24Regular />,
-    activeIcon: <Food24Filled />,
   },
   {
     key: 'settings',
