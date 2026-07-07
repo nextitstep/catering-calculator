@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Ingredient, Recipe } from '@/types';
 import {
   computeRecipeMetrics,
+  computeRecipeMetricsForPortions,
   costItemTotal,
   costPerPortion,
   grandTotal,
@@ -157,5 +158,28 @@ describe('scenario portions scaling', () => {
       simulationPortions: 40,
     };
     expect(computeRecipeMetrics(withFixedLabor).breakdown.labor).toBe(500);
+  });
+});
+
+describe('computeRecipeMetricsForPortions (used by the multi-recipe Event simulator)', () => {
+  it('matches computeRecipeMetrics when given the recipe own simulation portions', () => {
+    const direct = computeRecipeMetrics(chickenEscalope);
+    const viaHelper = computeRecipeMetricsForPortions(
+      chickenEscalope,
+      chickenEscalope.simulationPortions
+    );
+    expect(viaHelper).toEqual(direct);
+  });
+
+  it('does not mutate the original recipe when overriding portions', () => {
+    const original = { ...chickenEscalope };
+    computeRecipeMetricsForPortions(chickenEscalope, 40);
+    expect(chickenEscalope).toEqual(original);
+  });
+
+  it('scales ingredient cost for an event-specific portions override', () => {
+    const metrics = computeRecipeMetricsForPortions(chickenEscalope, 40);
+    expect(metrics.breakdown.ingredients).toBe(14340);
+    expect(metrics.grandTotal).toBe(17740);
   });
 });

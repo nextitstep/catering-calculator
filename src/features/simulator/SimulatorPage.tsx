@@ -1,5 +1,15 @@
-import { useMemo } from 'react';
-import { Card, Field, Input, Slider, Title2, Title3, makeStyles } from '@fluentui/react-components';
+import { useMemo, useState } from 'react';
+import {
+  Card,
+  Field,
+  Input,
+  Slider,
+  Tab,
+  TabList,
+  Title2,
+  Title3,
+  makeStyles,
+} from '@fluentui/react-components';
 import {
   ArrowTrendingLines24Regular,
   Box24Regular,
@@ -27,6 +37,7 @@ import { CostPieChart } from '@/features/dashboard/components/CostPieChart';
 import { CostSummaryCard } from '@/features/simulator/components/CostSummaryCard';
 import { TargetPriceCard } from '@/features/simulator/components/TargetPriceCard';
 import { IngredientPricesList } from '@/features/simulator/components/IngredientPricesList';
+import { EventSimulator } from '@/features/simulator/components/EventSimulator';
 import { OtherCostCard } from '@/features/ingredients/components/OtherCostCard';
 
 const useStyles = makeStyles({
@@ -117,6 +128,7 @@ const useStyles = makeStyles({
 
 export function SimulatorPage() {
   const styles = useStyles();
+  const [mode, setMode] = useState<'single' | 'event'>('single');
   const {
     activeRecipe,
     updateSellingPrice,
@@ -139,11 +151,36 @@ export function SimulatorPage() {
   );
   const scale = useMemo(() => (activeRecipe ? scaleFactor(activeRecipe) : 1), [activeRecipe]);
 
+  const modeSwitcher = (
+    <TabList
+      selectedValue={mode}
+      onTabSelect={(_, data) => setMode(data.value as 'single' | 'event')}
+      style={{ marginBottom: 16 }}
+    >
+      <Tab value="single">Single Recipe</Tab>
+      <Tab value="event">Event (Multiple Recipes)</Tab>
+    </TabList>
+  );
+
+  if (mode === 'event') {
+    return (
+      <div>
+        <Title2>Cost Simulator</Title2>
+        {modeSwitcher}
+        <EventSimulator />
+      </div>
+    );
+  }
+
   if (!activeRecipe || !metrics) {
     return (
-      <Card className={styles.empty}>
-        <Title2>No recipe selected</Title2>
-      </Card>
+      <div>
+        <Title2>Cost Simulator</Title2>
+        {modeSwitcher}
+        <Card className={styles.empty}>
+          <Title2>No recipe selected</Title2>
+        </Card>
+      </div>
     );
   }
 
@@ -151,160 +188,162 @@ export function SimulatorPage() {
   const profitTrend = metrics.profit >= 0 ? 'positive' : 'negative';
 
   return (
-    <div className={styles.root}>
-      <div className={styles.summaryArea}>
-        <CostSummaryCard
-          simulationPortions={activeRecipe.simulationPortions}
-          onSimulationPortionsChange={(v) => updateSimulationPortions(activeRecipe.id, v)}
-          breakdown={metrics.breakdown}
-          grandTotal={metrics.grandTotal}
-          costPerPortion={metrics.costPerPortion}
-        />
-        <TargetPriceCard
-          costPerPortion={metrics.costPerPortion}
-          sellingPrice={activeRecipe.sellingPrice}
-        />
-      </div>
+    <div>
+      <Title2>Cost Simulator</Title2>
+      {modeSwitcher}
+      <div className={styles.root}>
+        <div className={styles.summaryArea}>
+          <CostSummaryCard
+            simulationPortions={activeRecipe.simulationPortions}
+            onSimulationPortionsChange={(v) => updateSimulationPortions(activeRecipe.id, v)}
+            breakdown={metrics.breakdown}
+            grandTotal={metrics.grandTotal}
+            costPerPortion={metrics.costPerPortion}
+          />
+          <TargetPriceCard
+            costPerPortion={metrics.costPerPortion}
+            sellingPrice={activeRecipe.sellingPrice}
+          />
+        </div>
 
-      <div className={styles.contentArea}>
-        <Title2>Cost Simulator</Title2>
-
-        <Card className={styles.priceCard} style={{ marginTop: 16 }}>
-          <Title3>Selling Price</Title3>
-          <div className={styles.priceRow}>
-            <Field className={styles.priceInput} label="Price">
-              <Input
-                type="number"
-                value={String(activeRecipe.sellingPrice)}
-                onChange={(_, data) =>
-                  updateSellingPrice(activeRecipe.id, Number(data.value) || 0)
-                }
+        <div className={styles.contentArea}>
+          <Card className={styles.priceCard}>
+            <Title3>Selling Price</Title3>
+            <div className={styles.priceRow}>
+              <Field className={styles.priceInput} label="Price">
+                <Input
+                  type="number"
+                  value={String(activeRecipe.sellingPrice)}
+                  onChange={(_, data) =>
+                    updateSellingPrice(activeRecipe.id, Number(data.value) || 0)
+                  }
+                />
+              </Field>
+              <Slider
+                className={styles.slider}
+                min={0}
+                max={Math.round(maxSlider)}
+                step={1}
+                value={activeRecipe.sellingPrice}
+                onChange={(_, data) => updateSellingPrice(activeRecipe.id, data.value)}
               />
-            </Field>
-            <Slider
-              className={styles.slider}
-              min={0}
-              max={Math.round(maxSlider)}
-              step={1}
-              value={activeRecipe.sellingPrice}
-              onChange={(_, data) => updateSellingPrice(activeRecipe.id, data.value)}
+            </div>
+          </Card>
+
+          <div className={styles.kpiGrid}>
+            <StatCard
+              icon={<ArrowTrendingLines24Regular />}
+              value={metrics.revenue}
+              label="Revenue"
+              format={(v) => formatMoney(v)}
+            />
+            <StatCard
+              icon={<DataTrending24Regular />}
+              value={metrics.profit}
+              label="Profit"
+              format={(v) => formatMoney(v)}
+              trend={profitTrend}
+              delay={0.03}
+            />
+            <StatCard
+              icon={<MoneyHand24Regular />}
+              value={metrics.profitPerPortion}
+              label="Profit Per Portion"
+              format={(v) => formatMoney(v)}
+              trend={profitTrend}
+              delay={0.06}
+            />
+            <StatCard
+              icon={<DocumentPercent24Regular />}
+              value={metrics.margin}
+              label="Margin"
+              format={formatPercent}
+              trend={profitTrend}
+              delay={0.09}
+            />
+            <StatCard
+              icon={<ChartMultiple24Regular />}
+              value={metrics.markup}
+              label="Markup"
+              format={formatPercent}
+              trend={profitTrend}
+              delay={0.12}
             />
           </div>
-        </Card>
 
-        <div className={styles.kpiGrid}>
-          <StatCard
-            icon={<ArrowTrendingLines24Regular />}
-            value={metrics.revenue}
-            label="Revenue"
-            format={(v) => formatMoney(v)}
-          />
-          <StatCard
-            icon={<DataTrending24Regular />}
-            value={metrics.profit}
-            label="Profit"
-            format={(v) => formatMoney(v)}
-            trend={profitTrend}
-            delay={0.03}
-          />
-          <StatCard
-            icon={<MoneyHand24Regular />}
-            value={metrics.profitPerPortion}
-            label="Profit Per Portion"
-            format={(v) => formatMoney(v)}
-            trend={profitTrend}
-            delay={0.06}
-          />
-          <StatCard
-            icon={<DocumentPercent24Regular />}
-            value={metrics.margin}
-            label="Margin"
-            format={formatPercent}
-            trend={profitTrend}
-            delay={0.09}
-          />
-          <StatCard
-            icon={<ChartMultiple24Regular />}
-            value={metrics.markup}
-            label="Markup"
-            format={formatPercent}
-            trend={profitTrend}
-            delay={0.12}
-          />
-        </div>
-
-        <div className={styles.section}>
-          <Title3 className={styles.sectionTitle}>Ingredient Prices</Title3>
-          <IngredientPricesList
-            ingredients={activeRecipe.ingredients}
-            scale={scale}
-            onPriceChange={(ingredientId, unitPrice) =>
-              updateIngredient(activeRecipe.id, ingredientId, { unitPrice })
-            }
-          />
-        </div>
-
-        <div className={styles.section}>
-          <Title3 className={styles.sectionTitle}>Other Costs</Title3>
-          <div className={styles.otherCostsGrid}>
-            <OtherCostCard
-              icon={<Box24Regular />}
-              label="Packaging"
-              item={activeRecipe.packaging}
-              portions={activeRecipe.simulationPortions}
-              onChange={(item) => updateCostItem(activeRecipe.id, 'packaging', item)}
-            />
-            <OtherCostCard
-              icon={<VehicleTruckProfile24Regular />}
-              label="Transport"
-              item={activeRecipe.transport}
-              portions={activeRecipe.simulationPortions}
-              onChange={(item) => updateCostItem(activeRecipe.id, 'transport', item)}
-            />
-            <OtherCostCard
-              icon={<Toolbox24Regular />}
-              label="Labor"
-              item={activeRecipe.labor}
-              portions={activeRecipe.simulationPortions}
-              onChange={(item) => updateCostItem(activeRecipe.id, 'labor', item)}
-            />
-            <OtherCostCard
-              icon={<Wrench24Regular />}
-              label="Utilities"
-              item={activeRecipe.utilities}
-              portions={activeRecipe.simulationPortions}
-              onChange={(item) => updateCostItem(activeRecipe.id, 'utilities', item)}
-            />
-            <OtherCostCard
-              icon={<Sparkle24Regular />}
-              label="Miscellaneous"
-              item={activeRecipe.miscellaneous}
-              portions={activeRecipe.simulationPortions}
-              onChange={(item) => updateCostItem(activeRecipe.id, 'miscellaneous', item)}
+          <div className={styles.section}>
+            <Title3 className={styles.sectionTitle}>Ingredient Prices</Title3>
+            <IngredientPricesList
+              ingredients={activeRecipe.ingredients}
+              scale={scale}
+              onPriceChange={(ingredientId, unitPrice) =>
+                updateIngredient(activeRecipe.id, ingredientId, { unitPrice })
+              }
             />
           </div>
-        </div>
 
-        <div className={styles.section}>
-          <Title3 className={styles.sectionTitle}>Pricing Suggestions</Title3>
-          <Card>
-            <PricingSuggestionsGrid
-              suggestions={suggestions}
-              currentPrice={activeRecipe.sellingPrice}
-              onSelect={(price) => updateSellingPrice(activeRecipe.id, price)}
-            />
-          </Card>
-        </div>
+          <div className={styles.section}>
+            <Title3 className={styles.sectionTitle}>Other Costs</Title3>
+            <div className={styles.otherCostsGrid}>
+              <OtherCostCard
+                icon={<Box24Regular />}
+                label="Packaging"
+                item={activeRecipe.packaging}
+                portions={activeRecipe.simulationPortions}
+                onChange={(item) => updateCostItem(activeRecipe.id, 'packaging', item)}
+              />
+              <OtherCostCard
+                icon={<VehicleTruckProfile24Regular />}
+                label="Transport"
+                item={activeRecipe.transport}
+                portions={activeRecipe.simulationPortions}
+                onChange={(item) => updateCostItem(activeRecipe.id, 'transport', item)}
+              />
+              <OtherCostCard
+                icon={<Toolbox24Regular />}
+                label="Labor"
+                item={activeRecipe.labor}
+                portions={activeRecipe.simulationPortions}
+                onChange={(item) => updateCostItem(activeRecipe.id, 'labor', item)}
+              />
+              <OtherCostCard
+                icon={<Wrench24Regular />}
+                label="Utilities"
+                item={activeRecipe.utilities}
+                portions={activeRecipe.simulationPortions}
+                onChange={(item) => updateCostItem(activeRecipe.id, 'utilities', item)}
+              />
+              <OtherCostCard
+                icon={<Sparkle24Regular />}
+                label="Miscellaneous"
+                item={activeRecipe.miscellaneous}
+                portions={activeRecipe.simulationPortions}
+                onChange={(item) => updateCostItem(activeRecipe.id, 'miscellaneous', item)}
+              />
+            </div>
+          </div>
 
-        <div className={styles.chartsGrid}>
-          <Card className={styles.chartCard}>
-            <Title3>Profit Simulator</Title3>
-            <ProfitLineChart data={profitSeries} currentPrice={activeRecipe.sellingPrice} />
-          </Card>
-          <Card className={styles.chartCard}>
-            <Title3>Cost Breakdown</Title3>
-            <CostPieChart breakdown={metrics.breakdown} />
-          </Card>
+          <div className={styles.section}>
+            <Title3 className={styles.sectionTitle}>Pricing Suggestions</Title3>
+            <Card>
+              <PricingSuggestionsGrid
+                suggestions={suggestions}
+                currentPrice={activeRecipe.sellingPrice}
+                onSelect={(price) => updateSellingPrice(activeRecipe.id, price)}
+              />
+            </Card>
+          </div>
+
+          <div className={styles.chartsGrid}>
+            <Card className={styles.chartCard}>
+              <Title3>Profit Simulator</Title3>
+              <ProfitLineChart data={profitSeries} currentPrice={activeRecipe.sellingPrice} />
+            </Card>
+            <Card className={styles.chartCard}>
+              <Title3>Cost Breakdown</Title3>
+              <CostPieChart breakdown={metrics.breakdown} />
+            </Card>
+          </div>
         </div>
       </div>
     </div>

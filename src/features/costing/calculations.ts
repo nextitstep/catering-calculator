@@ -107,6 +107,18 @@ export function computeRecipeMetrics(recipe: Recipe): RecipeMetrics {
   };
 }
 
+/**
+ * Computes metrics for a recipe as if it were being produced at `eventPortions` instead of its
+ * own stored scenario portions - used by the multi-recipe Event simulator so each recipe's
+ * quantities/costs scale to the portions needed for that specific event without mutating it.
+ */
+export function computeRecipeMetricsForPortions(
+  recipe: Recipe,
+  eventPortions: number
+): RecipeMetrics {
+  return computeRecipeMetrics({ ...recipe, simulationPortions: eventPortions });
+}
+
 export interface PricingSuggestion {
   label: string;
   multiplier: number;
