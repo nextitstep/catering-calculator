@@ -1,8 +1,11 @@
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import type { IngredientCatalogEntry, Unit } from '@/types';
 import { useLocalStorageState } from '@/shared/hooks/useLocalStorageState';
+import { createSeedIngredientCatalog } from '@/features/menus/seedData';
+import { useSharedSync } from '@/features/sync/useSharedSync';
 
 const STORAGE_KEY = 'catering-calc/ingredient-catalog';
+const SYNC_PATH = 'shared/ingredientCatalog';
 
 function normalize(name: string): string {
   return name.trim().toLowerCase();
@@ -12,6 +15,8 @@ interface IngredientCatalogContextValue {
   catalog: IngredientCatalogEntry[];
   /** Remembers an ingredient name/unit (and optionally its latest price) for future autocomplete. */
   remember: (name: string, unit: Unit, customUnit?: string, price?: number) => void;
+  /** Removes an ingredient from the catalog entirely. */
+  removeEntry: (name: string) => void;
   /** Suggestions matching a partial name, most recently updated first. */
   suggestions: (query: string) => IngredientCatalogEntry[];
   /** Last known price for an ingredient, 0 if never recorded. */
@@ -21,7 +26,11 @@ interface IngredientCatalogContextValue {
 const IngredientCatalogContext = createContext<IngredientCatalogContextValue | null>(null);
 
 export function IngredientCatalogProvider({ children }: { children: ReactNode }) {
-  const [catalog, setCatalog] = useLocalStorageState<IngredientCatalogEntry[]>(STORAGE_KEY, []);
+  const [catalog, setCatalog] = useLocalStorageState<IngredientCatalogEntry[]>(
+    STORAGE_KEY,
+    createSeedIngredientCatalog
+  );
+  useSharedSync(SYNC_PATH, catalog, setCatalog);
 
   const remember = useCallback(
     (name: string, unit: Unit, customUnit?: string, price?: number) => {
@@ -51,6 +60,14 @@ export function IngredientCatalogProvider({ children }: { children: ReactNode })
     [setCatalog]
   );
 
+  const removeEntry = useCallback(
+    (name: string) => {
+      const key = normalize(name);
+      setCatalog((prev) => prev.filter((e) => normalize(e.name) !== key));
+    },
+    [setCatalog]
+  );
+
   const suggestions = useCallback(
     (query: string) => {
       const q = normalize(query);
@@ -69,8 +86,8 @@ export function IngredientCatalogProvider({ children }: { children: ReactNode })
   );
 
   const value = useMemo<IngredientCatalogContextValue>(
-    () => ({ catalog, remember, suggestions, getPrice }),
-    [catalog, remember, suggestions, getPrice]
+    () => ({ catalog, remember, removeEntry, suggestions, getPrice }),
+    [catalog, remember, removeEntry, suggestions, getPrice]
   );
 
   return (

@@ -5,7 +5,7 @@ import {
   logEvent,
   type Analytics,
 } from 'firebase/analytics';
-import { getAuth, GoogleAuthProvider, type Auth } from 'firebase/auth';
+import { getAuth, signInAnonymously, type Auth } from 'firebase/auth';
 import { getDatabase, type Database } from 'firebase/database';
 
 const firebaseConfig = {
@@ -39,8 +39,15 @@ if (firebaseEnabled) {
     });
 }
 
-export const googleProvider = new GoogleAuthProvider();
 export { app, auth, db, analytics };
+
+/** Everyone who has the app open shares the same data, so we just need any authenticated
+ *  principal (anonymous is fine) to satisfy database security rules - no visible sign-in step. */
+export function ensureAnonymousAuth(): Promise<void> {
+  if (!firebaseEnabled || !auth) return Promise.resolve();
+  if (auth.currentUser) return Promise.resolve();
+  return signInAnonymously(auth).then(() => undefined);
+}
 
 export function logAnalyticsEvent(eventName: string, params?: Record<string, unknown>) {
   if (!analytics) return;

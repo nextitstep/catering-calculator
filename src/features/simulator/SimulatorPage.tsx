@@ -56,16 +56,25 @@ const useStyles = makeStyles({
     marginBottom: '8px',
   },
   menuRowDetails: {
-    display: 'grid',
-    gridTemplateColumns: '1fr',
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: '8px',
-    '@media (min-width: 560px)': {
-      gridTemplateColumns: '2fr 1fr 1fr',
-      alignItems: 'center',
-    },
+    flex: 1,
+    minWidth: 0,
   },
   menuName: {
     fontWeight: tokens.fontWeightSemibold,
+    flex: '2 1 140px',
+    minWidth: 0,
+  },
+  menuQtyInput: {
+    flex: '1 1 100px',
+    minWidth: '90px',
+  },
+  menuPriceInput: {
+    flex: '1 1 110px',
+    minWidth: '90px',
   },
   otherCostsGrid: {
     display: 'grid',
@@ -190,12 +199,14 @@ export function SimulatorPage() {
                   {included && entry ? (
                     <>
                       <Input
+                        className={styles.menuQtyInput}
                         type="number"
                         contentBefore={<Text size={200}>Qty</Text>}
                         value={String(entry.quantity)}
                         onChange={(_, data) => setQuantity(menu.id, Number(data.value) || 0)}
                       />
                       <Input
+                        className={styles.menuPriceInput}
                         type="number"
                         contentBefore={<Text size={200}>DA</Text>}
                         value={String(menu.preferredSellPrice)}

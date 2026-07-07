@@ -11,8 +11,10 @@ import type { Menu, MenuIngredient, Unit } from '@/types';
 import { useLocalStorageState } from '@/shared/hooks/useLocalStorageState';
 import { createSeedMenu } from '@/features/menus/seedData';
 import { migrateLegacyRecipesIfNeeded } from '@/features/menus/migrateLegacyRecipes';
-import { useCloudSync } from '@/features/sync/useCloudSync';
+import { useSharedSync } from '@/features/sync/useSharedSync';
 import { logAnalyticsEvent } from '@/shared/lib/firebase';
+
+const SYNC_PATH = 'shared/menus';
 
 const STORAGE_KEY = 'catering-calc/menus';
 
@@ -70,7 +72,7 @@ interface MenusContextValue {
   updatePreferredSellPrice: (menuId: string, price: number) => void;
   importMenu: (menu: Menu) => void;
   markOpened: (id: string) => void;
-  cloudSync: ReturnType<typeof useCloudSync>;
+  sync: ReturnType<typeof useSharedSync<Menu[]>>;
 }
 
 const MenusContext = createContext<MenusContextValue | null>(null);
@@ -81,7 +83,7 @@ export function MenusProvider({ children }: { children: ReactNode }) {
     () => migrateLegacyRecipesIfNeeded() ?? [createSeedMenu()]
   );
   const [pendingDeletion, setPendingDeletion] = useState<DeletedMenuState | null>(null);
-  const cloudSync = useCloudSync(menus, setMenus);
+  const sync = useSharedSync(SYNC_PATH, menus, setMenus);
 
   // Backfill fields added after some users already had data in localStorage.
   useEffect(() => {
@@ -287,7 +289,7 @@ export function MenusProvider({ children }: { children: ReactNode }) {
     updatePreferredSellPrice,
     importMenu,
     markOpened,
-    cloudSync,
+    sync,
   };
 
   return <MenusContext.Provider value={value}>{children}</MenusContext.Provider>;

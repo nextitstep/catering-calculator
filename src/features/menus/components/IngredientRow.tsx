@@ -23,20 +23,26 @@ const useStyles = makeStyles({
     touchAction: 'none',
   },
   fields: {
-    display: 'grid',
-    gridTemplateColumns: '1fr',
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: '8px',
-    '@media (min-width: 480px)': {
-      gridTemplateColumns: '2fr 1fr 1fr auto',
-      alignItems: 'end',
-    },
+  },
+  name: {
+    flex: '3 1 160px',
+    minWidth: 0,
+  },
+  qty: {
+    flex: '1 1 70px',
+    minWidth: '64px',
+  },
+  unit: {
+    flex: '1 1 90px',
+    minWidth: '80px',
   },
   deleteRow: {
-    display: 'flex',
-    justifyContent: 'flex-end',
-    '@media (min-width: 480px)': {
-      justifyContent: 'center',
-    },
+    flex: '0 0 auto',
+    marginLeft: 'auto',
   },
 });
 
@@ -70,6 +76,7 @@ export function IngredientRow({ ingredient, onChange, onDelete }: IngredientRowP
       <div>
         <div className={styles.fields}>
           <Combobox
+            className={styles.name}
             freeform
             placeholder="Ingredient name"
             value={ingredient.name}
@@ -90,12 +97,14 @@ export function IngredientRow({ ingredient, onChange, onDelete }: IngredientRowP
             ))}
           </Combobox>
           <Input
+            className={styles.qty}
             type="number"
             placeholder="Qty"
             value={String(ingredient.quantity)}
             onChange={(_, data) => onChange({ quantity: Number(data.value) || 0 })}
           />
           <Dropdown
+            className={styles.unit}
             value={ingredient.unit}
             selectedOptions={[ingredient.unit]}
             onOptionSelect={(_, data) =>
@@ -108,15 +117,14 @@ export function IngredientRow({ ingredient, onChange, onDelete }: IngredientRowP
               </Option>
             ))}
           </Dropdown>
-          <div className={styles.deleteRow}>
-            <Button
-              appearance="subtle"
-              size="small"
-              icon={<Delete24Regular />}
-              onClick={onDelete}
-              aria-label="Delete ingredient"
-            />
-          </div>
+          <Button
+            className={styles.deleteRow}
+            appearance="subtle"
+            size="small"
+            icon={<Delete24Regular />}
+            onClick={onDelete}
+            aria-label="Delete ingredient"
+          />
         </div>
         {ingredient.unit === 'custom' ? (
           <Input

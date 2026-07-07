@@ -5,15 +5,21 @@ import { useIngredientCatalog } from '@/features/ingredientCatalog/IngredientCat
 
 const useStyles = makeStyles({
   row: {
-    display: 'grid',
-    gridTemplateColumns: '1fr',
+    display: 'flex',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: '8px',
     padding: '12px 14px',
     marginBottom: '8px',
-    '@media (min-width: 480px)': {
-      gridTemplateColumns: '2fr 1fr',
-      alignItems: 'center',
-    },
+  },
+  info: {
+    flex: '2 1 160px',
+    minWidth: 0,
+  },
+  price: {
+    flex: '1 1 130px',
+    minWidth: '110px',
   },
   name: {
     fontWeight: tokens.fontWeightSemibold,
@@ -58,11 +64,12 @@ export function IngredientPriceSheet({ menus }: IngredientPriceSheetProps) {
     <div>
       {uniqueIngredients.map((ing) => (
         <Card key={ing.name.toLowerCase()} className={styles.row}>
-          <div>
+          <div className={styles.info}>
             <div className={styles.name}>{ing.name}</div>
             <div className={styles.unit}>per {ing.unit === 'custom' ? ing.customUnit : ing.unit}</div>
           </div>
           <Input
+            className={styles.price}
             type="number"
             contentBefore={<Text size={200}>DA</Text>}
             value={String(getPrice(ing.name))}

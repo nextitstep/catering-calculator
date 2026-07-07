@@ -6,6 +6,8 @@ import { IngredientCatalogProvider } from '@/features/ingredientCatalog/Ingredie
 import { SettingsProvider, useSettings } from '@/features/settings/SettingsContext';
 import { AppToasterProvider } from '@/shared/components/ToasterProvider';
 import { AppShell } from '@/shared/components/AppShell';
+import { PinLockScreen } from '@/shared/components/PinLockScreen';
+import { useAppLock } from '@/shared/hooks/useAppLock';
 import { useResolvedTheme } from '@/shared/hooks/useResolvedTheme';
 import { lightTheme, darkTheme } from '@/app/theme';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
@@ -15,9 +17,8 @@ import { SimulatorPage } from '@/features/simulator/SimulatorPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { AnalyticsPageTracker } from '@/shared/components/AnalyticsPageTracker';
 
-function ThemedShell() {
-  const { theme, language } = useSettings();
-  const resolved = useResolvedTheme(theme);
+function UnlockedApp() {
+  const { language } = useSettings();
 
   useEffect(() => {
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
@@ -25,24 +26,38 @@ function ThemedShell() {
   }, [language]);
 
   return (
+    <IngredientCatalogProvider>
+      <MenusProvider>
+        <AppToasterProvider>
+          <HashRouter>
+            <AnalyticsPageTracker />
+            <Routes>
+              <Route element={<AppShell />}>
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/menus" element={<MenusPage />} />
+                <Route path="/menus/:menuId" element={<MenuDetailPage />} />
+                <Route path="/simulator" element={<SimulatorPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+              </Route>
+            </Routes>
+          </HashRouter>
+        </AppToasterProvider>
+      </MenusProvider>
+    </IngredientCatalogProvider>
+  );
+}
+
+function Root() {
+  const { theme } = useSettings();
+  const resolved = useResolvedTheme(theme);
+  const { unlocked, tryUnlock } = useAppLock();
+
+  return (
     <FluentProvider
       theme={resolved === 'dark' ? darkTheme : lightTheme}
       style={{ minHeight: '100vh' }}
     >
-      <AppToasterProvider>
-        <HashRouter>
-          <AnalyticsPageTracker />
-          <Routes>
-            <Route element={<AppShell />}>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/menus" element={<MenusPage />} />
-              <Route path="/menus/:menuId" element={<MenuDetailPage />} />
-              <Route path="/simulator" element={<SimulatorPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-            </Route>
-          </Routes>
-        </HashRouter>
-      </AppToasterProvider>
+      {unlocked ? <UnlockedApp /> : <PinLockScreen onUnlock={tryUnlock} />}
     </FluentProvider>
   );
 }
@@ -50,11 +65,7 @@ function ThemedShell() {
 export default function App() {
   return (
     <SettingsProvider>
-      <IngredientCatalogProvider>
-        <MenusProvider>
-          <ThemedShell />
-        </MenusProvider>
-      </IngredientCatalogProvider>
+      <Root />
     </SettingsProvider>
   );
 }

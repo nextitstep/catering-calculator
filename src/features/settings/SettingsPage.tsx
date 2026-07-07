@@ -1,20 +1,18 @@
 import {
-  Avatar,
-  Button,
+  Badge,
   Card,
   Field,
   Radio,
   RadioGroup,
-  Spinner,
   Text,
   Title2,
   Title3,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { CloudSync24Regular } from '@fluentui/react-icons';
 import { useSettings } from '@/features/settings/SettingsContext';
 import { useMenusStore } from '@/features/menus/MenusContext';
+import { IngredientCatalogManager } from '@/features/ingredientCatalog/components/IngredientCatalogManager';
 import type { Language, ThemeMode } from '@/types';
 
 const useStyles = makeStyles({
@@ -24,6 +22,7 @@ const useStyles = makeStyles({
     gap: '16px',
     maxWidth: '640px',
     marginTop: '16px',
+    marginBottom: '24px',
     '@media (min-width: 640px)': {
       gridTemplateColumns: 'repeat(2, 1fr)',
     },
@@ -34,13 +33,12 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     gap: '12px',
   },
-  accountRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
   caption: {
     color: tokens.colorNeutralForeground3,
+  },
+  sectionTitle: {
+    marginBottom: '12px',
+    display: 'block',
   },
 });
 
@@ -59,49 +57,35 @@ const THEME_LABELS: Record<ThemeMode, string> = {
 export function SettingsPage() {
   const styles = useStyles();
   const { language, theme, setLanguage, setTheme } = useSettings();
-  const { cloudSync } = useMenusStore();
+  const { sync } = useMenusStore();
 
   return (
     <div>
       <Title2>Settings</Title2>
       <div className={styles.grid}>
         <Card className={styles.card}>
-          <Title3>Account & Sync</Title3>
-          {!cloudSync.enabled ? (
+          <Title3>Sync</Title3>
+          {!sync.enabled ? (
             <Text className={styles.caption}>Cloud sync is not configured for this build.</Text>
-          ) : !cloudSync.authReady ? (
-            <Spinner size="tiny" label="Checking sign-in status..." />
-          ) : cloudSync.user ? (
+          ) : sync.authFailed ? (
             <>
-              <div className={styles.accountRow}>
-                <Avatar
-                  name={cloudSync.user.displayName ?? cloudSync.user.email ?? 'Signed in'}
-                  image={{ src: cloudSync.user.photoURL ?? undefined }}
-                />
-                <div>
-                  <Text weight="semibold" block>
-                    {cloudSync.user.displayName ?? cloudSync.user.email}
-                  </Text>
-                  <Text size={200} className={styles.caption}>
-                    Menus sync automatically across your devices
-                  </Text>
-                </div>
-              </div>
-              <Button onClick={() => cloudSync.signOut()}>Sign out</Button>
+              <Badge appearance="tint" color="danger">
+                Not connected
+              </Badge>
+              <Text size={200} className={styles.caption}>
+                Couldn't reach the shared sync service - you're working locally on this device
+                only. Nothing is lost; this device's changes will sync once it reconnects.
+              </Text>
             </>
           ) : (
             <>
-              <Text className={styles.caption}>
-                Sign in to sync your menus across devices. The app keeps working offline either
-                way.
+              <Badge appearance="tint" color={sync.ready ? 'success' : 'warning'}>
+                {sync.ready ? 'Live' : 'Connecting...'}
+              </Badge>
+              <Text size={200} className={styles.caption}>
+                Menus and ingredients sync automatically, in real time, with everyone else who has
+                the app open. The app keeps working offline either way.
               </Text>
-              <Button
-                appearance="primary"
-                icon={<CloudSync24Regular />}
-                onClick={() => cloudSync.signIn()}
-              >
-                Sign in with Google
-              </Button>
             </>
           )}
         </Card>
@@ -131,6 +115,9 @@ export function SettingsPage() {
           </Field>
         </Card>
       </div>
+
+      <Title3 className={styles.sectionTitle}>Ingredients</Title3>
+      <IngredientCatalogManager />
     </div>
   );
 }

@@ -41,14 +41,8 @@ const useStyles = makeStyles({
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: '1fr',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
     gap: '12px',
-    '@media (min-width: 640px)': {
-      gridTemplateColumns: 'repeat(2, 1fr)',
-    },
-    '@media (min-width: 1100px)': {
-      gridTemplateColumns: 'repeat(3, 1fr)',
-    },
   },
   fab: {
     position: 'fixed',
